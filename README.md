@@ -10,10 +10,16 @@ Press enter again if you're still there.
 OK, keeping new PF config. Previous config is in /etc/pf.conf.old.
 ```
 
-If you do not press that second enter (or your terminal disconnects):
+If you do not press that second enter within 10 seconds (or your terminal disconnects):
 
 ```text
 Press enter to use new rules or Ctrl-C to abort.
 Press enter again if you're still there.
 Reverting to previous PF config. Yours saved in /etc/pf.conf.new.
 ```
+
+&nbsp;
+
+### Needs bash
+
+`nohup` and `read` somehow didn't work the way I wanted in `/bin/sh`. Should probably be investigated/fixed so that it runs in `/bin/sh` if this ever gets a man page and gets submitted and all.
