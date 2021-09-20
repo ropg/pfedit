@@ -46,10 +46,9 @@ while true; do
         exit
     fi
 
-    read -s -p "Press enter to use new rules or Ctrl-C to abort."
-    echo ""
-
     if pfctl -n -f /etc/pf.conf.new; then
+        read -s -p "Press enter to use new rules or Ctrl-C to abort."
+        echo ""
         tryout="yes"
         pfctl -f /etc/pf.conf.new
         # Another instance of this script ($0) with the PID of this one ($$) as argument
