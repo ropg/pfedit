@@ -1,0 +1,68 @@
+#!/usr/local/bin/bash
+
+# If called with numeric argument, we're the reverter process
+if [ "0$1" -gt 0 ]; then
+    trap "rm /var/run/pfedit_reverter.pid" SIGINT
+
+    echo $$ > /var/run/pfedit_reverter.pid
+    sleep 10
+    kill -SIGINT $1
+    pfctl -f /etc/pf.conf
+    rm /var/run/pfedit_reverter.pid
+    exit;
+fi
+
+[ ! -f "/etc/pf.conf" ] && touch /etc/pf.conf
+
+if [ -f "/etc/pf.conf.new" ]; then
+    while true; do
+        read -p "Found /etc/pf.conf.new. (C)ontinue editing or (A)bandon and copy from /etc/pf.conf? (c/a): "
+        [ "$REPLY" = "a" -o "$REPLY" = "A" ] && cp /etc/pf.conf /etc/pf.conf.new && break
+        [ "$REPLY" = "c" -o "$REPLY" = "C" ] && break
+    done
+else
+    cp /etc/pf.conf /etc/pf.conf.new
+fi
+
+sigint_trap() {
+    echo ""
+    if [ "$tryout" = "yes" ]; then
+        echo "Reverting to previous PF config. Yours saved in /etc/pf.conf.new."
+    else
+        echo "PF config unchanged. Your edit is in /etc/pf.conf.new."
+    fi
+    sleep 1
+    pfctl -f /etc/pf.conf
+    exit
+}
+
+trap sigint_trap SIGINT
+
+while true; do
+    $EDITOR /etc/pf.conf.new
+    if diff /etc/pf.conf /etc/pf.conf.new > /dev/null; then
+        rm /etc/pf.conf.new
+        echo "No changes made."
+        exit
+    fi
+
+    read -s -p "Press enter to use new rules or Ctrl-C to abort."
+    echo ""
+
+    if pfctl -n -f /etc/pf.conf.new; then
+        tryout="yes"
+        pfctl -f /etc/pf.conf.new
+        # Another instance of this script ($0) with the PID of this one ($$) as argument
+        nohup $0 $$ >/dev/null 2>&1 & disown
+        sleep 1
+        read -s -p "Press enter again to commit if you're still there."
+        echo ""
+        echo "OK, keeping new PF config. Previous config is in /etc/pf.conf.old."
+        kill -SIGINT `cat /var/run/pfedit_reverter.pid`
+        mv /etc/pf.conf /etc/pf.conf.old
+        mv /etc/pf.conf.new /etc/pf.conf
+        exit
+    fi
+    read -s -p "Press enter to edit again or Ctrl-C to abort."
+    echo ""
+done
